@@ -10,6 +10,9 @@ After you connect this repo to GitHub and enable Pages (**Settings → Pages →
 
 - Setup steps: [docs/GITHUB_PAGES.md](docs/GITHUB_PAGES.md)
 - URL format: `https://<your-github-username>.github.io/<repository-name>/`
+- This repo: **https://ikmaal.github.io/osmagic/** (after Pages **Source** is set to **GitHub Actions**)
+
+If you only see the README, set **Settings → Pages → Source → GitHub Actions**, or open **`/web/`** on your Pages URL until the workflow has deployed. See [docs/GITHUB_PAGES.md](docs/GITHUB_PAGES.md).
 
 No installation needed for the hosted app — open the Pages URL in your browser. JOSM direct export still requires running the local helper (see below).
 
