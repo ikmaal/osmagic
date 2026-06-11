@@ -16,6 +16,8 @@ If you only see the README, set **Settings → Pages → Source → GitHub Actio
 
 No installation needed for the hosted app — open the Pages URL in your browser. JOSM direct export still requires running the local helper (see below).
 
+**Share data with teammates:** configure [Supabase](docs/SUPABASE.md) so uploads sync to a shared cloud database (works on GitHub Pages).
+
 ## 📋 Prerequisites
 
 **Note:** These are only needed if you want to use JOSM integration. For online-only use (without JOSM), you don't need any of these!

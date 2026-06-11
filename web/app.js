@@ -104,11 +104,124 @@ class TaskManager {
         } catch (error) {
             console.error('Failed to initialize IndexedDB:', error);
         }
+
+        try {
+            const cloudOk = await supabaseSync.init();
+            if (cloudOk) {
+                supabaseSync.subscribeRealtime();
+                supabaseSync.onRemoteChange(() => {
+                    this.reloadFromCloud().catch(err => console.error('Cloud reload:', err));
+                });
+                this.updateCloudSyncUI('Team cloud connected');
+            } else {
+                this.updateCloudSyncUI('Local only — add Supabase config to share data', true);
+            }
+        } catch (error) {
+            console.error('Supabase init failed:', error);
+            this.updateCloudSyncUI('Cloud unavailable — using local storage only', true);
+        }
         
         this.initializeEventListeners();
         this.initializeKeyboardShortcuts();
         await this.loadFromStorage();
         this.syncViewChrome(this.currentView);
+    }
+
+    updateCloudSyncUI(message, isMuted = false) {
+        const bar = document.getElementById('cloudSyncBar');
+        const el = document.getElementById('cloudSyncStatus');
+        if (!bar || !el) return;
+        if (!message) {
+            bar.style.display = 'none';
+            return;
+        }
+        bar.style.display = 'flex';
+        el.textContent = message;
+        el.classList.toggle('cloud-sync-status--muted', isMuted);
+    }
+
+    async applyWorkspaceData(workspace) {
+        const batchesMeta = workspace.batches || [];
+        if (!batchesMeta.length) {
+            this.importBatches = [];
+            this.activeBatchId = null;
+            this.sequences = [];
+            this.geojsonData = null;
+            return;
+        }
+
+        this.importBatches = [];
+        for (const meta of batchesMeta) {
+            const gj = meta.geojson;
+            if (!gj || !gj.features) {
+                this.importBatches.push({
+                    id: meta.id,
+                    label: meta.label || 'Import',
+                    createdAt: meta.createdAt || new Date().toISOString(),
+                    geojson: { type: 'FeatureCollection', features: [] },
+                    sequences: [],
+                    currentIndex: meta.currentIndex || 0,
+                    currentView: meta.currentView || 'all'
+                });
+                continue;
+            }
+            const savedPreservedMap = new Map(
+                (meta.sequences || []).map(s => [
+                    String(s.id),
+                    {
+                        status: s.status !== undefined ? s.status : '',
+                        reviewedBy: s.reviewedBy !== undefined ? s.reviewedBy : ''
+                    }
+                ])
+            );
+            const sequences = this.buildSequencesFromGeoJSONSync(gj, savedPreservedMap);
+            this.importBatches.push({
+                id: meta.id,
+                label: meta.label || 'Import',
+                createdAt: meta.createdAt || new Date().toISOString(),
+                geojson: gj,
+                sequences,
+                currentIndex: meta.currentIndex || 0,
+                currentView: meta.currentView || 'all'
+            });
+        }
+
+        this.activeBatchId = workspace.activeBatchId || this.importBatches[0]?.id || null;
+        if (this.activeBatchId && !this.importBatches.find(b => b.id === this.activeBatchId)) {
+            this.activeBatchId = this.importBatches[0]?.id || null;
+        }
+        if (this.activeBatchId) {
+            this.applyBatchToWorkspace(this.activeBatchId);
+        }
+    }
+
+    async reloadFromCloud() {
+        if (!supabaseSync.enabled) {
+            alert('Supabase is not configured. Edit web/supabase-config.js with your project URL and anon key.');
+            return;
+        }
+        if (this._cloudReloading) return;
+        this._cloudReloading = true;
+        try {
+            this.updateCloudSyncUI('Refreshing from cloud…');
+            const cloud = await supabaseSync.loadWorkspace();
+            if (!cloud || !cloud.batches?.length) {
+                this.updateCloudSyncUI('Cloud is empty');
+                return;
+            }
+            this.commitActiveBatch();
+            await this.applyWorkspaceData(cloud);
+            await this.saveToStorage({ skipCloud: true });
+            this.renderBatchesUI();
+            this.renderCurrentTask();
+            this.updateSummary();
+            this.updateCloudSyncUI('Synced from team cloud');
+        } catch (error) {
+            console.error('Cloud refresh failed:', error);
+            this.updateCloudSyncUI('Cloud refresh failed — see console', true);
+        } finally {
+            this._cloudReloading = false;
+        }
     }
 
     initializeEventListeners() {
@@ -5964,7 +6077,7 @@ class TaskManager {
         }
     }
 
-    async saveToStorage() {
+    async saveToStorage(options = {}) {
         try {
             this.commitActiveBatch();
 
@@ -5993,6 +6106,16 @@ class TaskManager {
             for (const b of this.importBatches) {
                 if (b.geojson) {
                     await storageManager.saveGeoJSONForBatch(b.id, b.geojson);
+                }
+            }
+
+            if (!options.skipCloud && supabaseSync.enabled && !this._cloudReloading) {
+                try {
+                    await supabaseSync.saveWorkspace(taskData, this.importBatches);
+                    this.updateCloudSyncUI('Saved to team cloud');
+                } catch (cloudErr) {
+                    console.error('Supabase save failed:', cloudErr);
+                    this.updateCloudSyncUI('Cloud save failed — local copy kept', true);
                 }
             }
         } catch (error) {
@@ -6064,6 +6187,9 @@ class TaskManager {
         try {
             // Clear IndexedDB
             await storageManager.clearAll();
+            if (supabaseSync.enabled) {
+                await supabaseSync.clearWorkspace();
+            }
 
             // Reset all state
             this.geojsonData = null;
@@ -6105,6 +6231,26 @@ class TaskManager {
 
     async loadFromStorage() {
         try {
+            if (supabaseSync.enabled) {
+                try {
+                    const cloud = await supabaseSync.loadWorkspace();
+                    if (cloud?.batches?.length) {
+                        await this.applyWorkspaceData(cloud);
+                        await this.saveToStorage({ skipCloud: true });
+                        if (this.sequences.length > 0) {
+                            this.renderCurrentTask();
+                            this.updateSummary();
+                        }
+                        this.renderBatchesUI();
+                        this.updateCloudSyncUI('Loaded from team cloud');
+                        return;
+                    }
+                } catch (cloudErr) {
+                    console.error('Supabase load failed, falling back to local:', cloudErr);
+                    this.updateCloudSyncUI('Cloud load failed — using local data', true);
+                }
+            }
+
             const taskData = await storageManager.loadTaskData();
             if (!taskData) return;
 
@@ -6161,6 +6307,9 @@ class TaskManager {
                     this.updateSummary();
                 }
                 this.renderBatchesUI();
+                if (supabaseSync.enabled) {
+                    await this.saveToStorage({ skipCloud: false });
+                }
                 return;
             }
 
