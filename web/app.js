@@ -966,6 +966,47 @@ class TaskManager {
         return { lat, lon };
     }
 
+    encodeGeohash(lat, lon, precision = 7) {
+        const base32 = '0123456789bcdefghjkmnpqrstuvwxyz';
+        let latMin = -90.0;
+        let latMax = 90.0;
+        let lonMin = -180.0;
+        let lonMax = 180.0;
+        let geohash = '';
+        let even = true;
+        let bit = 0;
+        let ch = 0;
+
+        while (geohash.length < precision) {
+            if (even) {
+                const lonMid = (lonMin + lonMax) / 2;
+                if (lon >= lonMid) {
+                    ch |= 1 << (4 - bit);
+                    lonMin = lonMid;
+                } else {
+                    lonMax = lonMid;
+                }
+            } else {
+                const latMid = (latMin + latMax) / 2;
+                if (lat >= latMid) {
+                    ch |= 1 << (4 - bit);
+                    latMin = latMid;
+                } else {
+                    latMax = latMid;
+                }
+            }
+            even = !even;
+            if (bit < 4) {
+                bit++;
+            } else {
+                geohash += base32[ch];
+                bit = 0;
+                ch = 0;
+            }
+        }
+        return geohash;
+    }
+
     parseCSV(csvText) {
         // Synchronous version for small files (< 100 rows)
         return this.parseCSVSync(csvText);
@@ -1477,6 +1518,7 @@ class TaskManager {
             const idAttr = this.escapeHtmlAttr(String(seq.id));
             const idText = this.escapeHtml(String(seq.id));
             const ll = this.formatSequenceLatLon(seq);
+            const gh = this.formatSequenceGeohash(seq);
             const stats = seq.features && seq.features.length
                 ? this.calculateStats(seq.features)
                 : {
@@ -1500,6 +1542,7 @@ class TaskManager {
                         <select class="status-dropdown-inline sequences-reviewer-select" data-sequence-id="${idAttr}" onchange="taskManager.updateSequenceReviewer('${escapedId}', this.value)">${this.reviewerOptionsInnerHtml(seq.reviewedBy)}</select>
                     </td>
                     <td class="sequences-td-coords">${this.coordinatesCopyHtml(ll, 'sequences-table-coords')}</td>
+                    <td class="sequences-td-geohash">${gh === '—' ? '—' : this.coordinatesCopyHtml(gh, 'sequences-table-geohash')}</td>
                     <td class="sequences-td-num">${stats.features}</td>
                     <td class="sequences-td-num">${stats.nodes}</td>
                     <td class="sequences-td-num">${stats.ways}</td>
@@ -1514,6 +1557,7 @@ class TaskManager {
                         <th>Status</th>
                         <th>Reviewer</th>
                         <th>Coordinates</th>
+                        <th>Geohash</th>
                         <th>Feat.</th>
                         <th>Nodes</th>
                         <th>Ways</th>
@@ -1570,8 +1614,9 @@ class TaskManager {
             ? allSequences.filter(seq => {
                 const id = String(seq.id).toLowerCase();
                 const ll = this.formatSequenceLatLon(seq).toLowerCase();
+                const gh = this.formatSequenceGeohash(seq).toLowerCase();
                 const reviewer = String(seq.reviewedBy || '').toLowerCase();
-                return id.includes(searchTerm) || ll.includes(searchTerm) || reviewer.includes(searchTerm);
+                return id.includes(searchTerm) || ll.includes(searchTerm) || gh.includes(searchTerm) || reviewer.includes(searchTerm);
             })
             : allSequences;
 
@@ -1591,7 +1636,7 @@ class TaskManager {
             const ll = this.formatSequenceLatLon(seq);
             return `<div class="sequence-id-item clickable" data-sequence-id="${escapedId}" onclick="taskManager.navigateToSequence('${escapedId}')">
                 <div class="sequence-id-line">${seq.id}</div>
-                ${this.coordinatesCopyHtml(ll)}${seq.reviewedBy ? `<div class="sequence-reviewer-badge">${this.escapeHtml(String(seq.reviewedBy))}</div>` : ''}</div>`;
+                ${this.coordinatesCopyHtml(ll)}${this.geohashDisplayHtml(seq)}${seq.reviewedBy ? `<div class="sequence-reviewer-badge">${this.escapeHtml(String(seq.reviewedBy))}</div>` : ''}</div>`;
         }).join('');
 
         const mainContent = filteredSequences.length === 0 && searchTerm
@@ -1614,7 +1659,7 @@ class TaskManager {
                                 type="text" 
                                 id="allTasksSearchInput" 
                                 class="search-input" 
-                                placeholder="Search by ID, coordinates, or reviewer…" 
+                                placeholder="Search by ID, coordinates, geohash, or reviewer…" 
                                 value="${this.allTasksSearchTerm}"
                                 oninput="taskManager.handleAllTasksSearch(this.value)"
                             />
@@ -1699,6 +1744,7 @@ class TaskManager {
                     <div class="sequence-item-main">
                         <div class="sequence-id-display">${seq.id}</div>
                         ${this.coordinatesCopyHtml(ll)}
+                        ${this.geohashDisplayHtml(seq)}
                     </div>
                     <select class="status-dropdown-inline sequence-reviewer-select" data-sequence-id="${seq.id}" onchange="taskManager.updateSequenceReviewer('${escapedId}', this.value)">${this.reviewerOptionsInnerHtml(seq.reviewedBy)}</select>
                     <select class="status-dropdown-inline" data-sequence-id="${seq.id}" onchange="taskManager.updateStatus('${escapedId}', this.value)">
@@ -1797,6 +1843,7 @@ class TaskManager {
         // Render full detailed view with all metadata (pulls from "All" tab data)
         const displaySequence = finalSequence;
         const ll = this.formatSequenceLatLon(displaySequence);
+        const gh = this.formatSequenceGeohash(displaySequence);
         const seqIdAttr = this.escapeHtmlAttr(String(displaySequence.id));
         taskDisplay.innerHTML = `
             <div class="task-card">
@@ -1809,6 +1856,10 @@ class TaskManager {
                     <div class="detail-item detail-coords-item">
                         <div class="detail-label">Coordinates (WGS84)</div>
                         ${this.coordinatesCopyHtml(ll, 'detail-coords-btn')}
+                    </div>
+                    <div class="detail-item detail-geohash-item">
+                        <div class="detail-label">Geohash</div>
+                        ${gh === '—' ? '<span class="sequence-geohash sequence-geohash--empty">—</span>' : this.coordinatesCopyHtml(gh, 'detail-geohash-btn')}
                     </div>
                     <div class="detail-item">
                         <div class="detail-label">Features</div>
@@ -2061,6 +2112,39 @@ class TaskManager {
         return `${c.lat.toFixed(6)}, ${c.lon.toFixed(6)}`;
     }
 
+    /**
+     * Geohash for sequence center (precision 7 ≈ ±76 m). Uses feature property when present.
+     * @returns {string | null}
+     */
+    getSequenceGeohash(sequence, precision = 7) {
+        if (sequence?.features?.length) {
+            for (const feature of sequence.features) {
+                const props = feature.properties;
+                if (!props) continue;
+                const fromProps = props.geohash || props.geohash_code || props.hash;
+                if (fromProps != null && String(fromProps).trim()) {
+                    return String(fromProps).trim().toLowerCase();
+                }
+            }
+        }
+        const center = this.getSequenceCenterLatLon(sequence);
+        if (!center) return null;
+        return this.encodeGeohash(center.lat, center.lon, precision);
+    }
+
+    formatSequenceGeohash(sequence) {
+        const geohash = this.getSequenceGeohash(sequence);
+        return geohash || '—';
+    }
+
+    geohashDisplayHtml(sequence, extraClass = '') {
+        const geohash = this.formatSequenceGeohash(sequence);
+        if (geohash === '—') {
+            return `<span class="sequence-geohash sequence-geohash--empty ${extraClass}">—</span>`;
+        }
+        return `<div class="sequence-geohash-wrap ${extraClass}"><span class="sequence-geohash-label">Geohash</span> ${this.coordinatesCopyHtml(geohash, 'sequence-geohash')}</div>`;
+    }
+
     escapeHtmlAttr(value) {
         return String(value)
             .replace(/&/g, '&amp;')
@@ -2112,7 +2196,7 @@ class TaskManager {
             const fileInfo = document.getElementById('fileInfo');
             if (fileInfo) {
                 const prev = fileInfo.textContent;
-                fileInfo.textContent = 'Coordinates copied to clipboard.';
+                fileInfo.textContent = 'Copied to clipboard.';
                 setTimeout(() => {
                     fileInfo.textContent = prev;
                 }, 1600);
@@ -6132,15 +6216,17 @@ class TaskManager {
         }
 
         // Create CSV content
-        const headers = ['Sequence ID', 'Status', 'Reviewer', 'Coordinates'];
+        const headers = ['Sequence ID', 'Status', 'Reviewer', 'Coordinates', 'Geohash'];
         const rows = allSequences.map(seq => {
             const status = seq.status || 'Active (Blank)';
             const reviewer = seq.reviewedBy || '';
             const sequenceId = String(seq.id).replace(/"/g, '""');
             const coords = this.formatSequenceLatLon(seq);
+            const geohash = this.formatSequenceGeohash(seq);
             const coordsEsc = coords === '—' ? '' : String(coords).replace(/"/g, '""');
+            const geohashEsc = geohash === '—' ? '' : String(geohash).replace(/"/g, '""');
             const reviewerEsc = String(reviewer).replace(/"/g, '""');
-            return `"${sequenceId}","${status}","${reviewerEsc}","${coordsEsc}"`;
+            return `"${sequenceId}","${status}","${reviewerEsc}","${coordsEsc}","${geohashEsc}"`;
         });
 
         const csvContent = [

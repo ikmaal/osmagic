@@ -1052,6 +1052,52 @@ button.sequence-latlon:hover {
     color: var(--accent-primary);
 }
 
+.sequence-geohash-wrap {
+    margin-top: 4px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 6px;
+    justify-content: center;
+}
+
+.sequence-item-main .sequence-geohash-wrap {
+    justify-content: flex-start;
+}
+
+.sequence-geohash-label {
+    font-size: 0.62rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+}
+
+button.sequence-geohash {
+    width: auto;
+    margin-top: 0;
+    font-size: 0.7rem;
+}
+
+.sequence-geohash--empty {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+
+.detail-geohash-item .detail-geohash-btn,
+.detail-geohash-item button.sequence-latlon {
+    display: block;
+    width: 100%;
+    text-align: left;
+    font-size: 0.95rem;
+    font-weight: 500;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-primary);
+    margin-top: 0;
+    padding: 4px 0;
+}
+
 .sequence-reviewer-select {
     min-width: 150px;
     flex-shrink: 0;
@@ -1171,6 +1217,21 @@ button.link-seq-id:hover {
 
 .sequences-td-coords {
     max-width: 220px;
+}
+
+.sequences-td-geohash {
+    max-width: 120px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+}
+
+.sequences-table-geohash.sequence-latlon {
+    display: block;
+    width: 100%;
+    text-align: left;
+    margin-top: 0;
+    font-size: 0.72rem;
+    word-break: break-all;
 }
 
 .sequences-td-reviewer {
