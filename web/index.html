@@ -174,43 +174,29 @@
 
             <!-- Task Display Area -->
             <div class="task-display" id="taskDisplay">
-                <div class="empty-state">
-                    <div class="empty-icon">
-                        <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.5">
-                            <rect x="8" y="16" width="48" height="40" rx="4"/>
-                            <path d="M8 28h48"/>
-                            <circle cx="32" cy="42" r="8"/>
-                            <path d="M32 38v8M28 42h8"/>
-                        </svg>
+                <div id="taskDisplayMain" class="task-display-main">
+                    <div class="empty-state">
+                        <div class="empty-icon">
+                            <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <rect x="8" y="16" width="48" height="40" rx="4"/>
+                                <path d="M8 28h48"/>
+                                <circle cx="32" cy="42" r="8"/>
+                                <path d="M32 38v8M28 42h8"/>
+                            </svg>
+                        </div>
+                        <h2 class="empty-title">Nothing here yet</h2>
+                        <p class="empty-text">Import a trace file from the panel on the left to begin.</p>
                     </div>
-                    <h2 class="empty-title">Nothing here yet</h2>
-                    <p class="empty-text">Import a trace file from the panel on the left to begin.</p>
                 </div>
-            </div>
-        </main>
-    </div>
 
-    <!-- Preview Modal -->
-    <div id="previewModal" class="modal" onclick="if(event.target.id === 'previewModal') taskManager.closePreview()">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <div class="modal-header">
-                <div class="modal-title-group">
-                    <h2 class="modal-title">Edit Sequence</h2>
-                    <span class="modal-sequence-id" id="previewSequenceId"></span>
-                    <div class="modal-reviewer-field">
-                        <label for="previewReviewerSelect">Reviewer</label>
-                        <select id="previewReviewerSelect" class="status-dropdown-inline modal-reviewer-select" aria-label="Reviewer for this sequence"></select>
+                <!-- Inline sequence editor (Active view) -->
+                <div id="sequenceEditorPanel" class="sequence-editor-panel" style="display: none;" aria-label="Sequence editor">
+                    <div class="sequence-editor-header">
+                        <h2 class="sequence-editor-title">Edit sequence</h2>
+                        <span class="sequence-editor-seq-id" id="previewSequenceId"></span>
                     </div>
-                </div>
-                <button class="modal-close" onclick="taskManager.closePreview()">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
-                </button>
-            </div>
-            
-            <div class="modal-body">
+
+                    <div class="sequence-editor-body">
                 <!-- Workflow Panel -->
                 <div id="workflowPanel" class="workflow-panel">
                     <div class="workflow-steps">
@@ -225,40 +211,52 @@
                             <div class="step-status">✓</div>
                         </div>
                         <div class="step-connector"></div>
-                        <div class="workflow-step" id="workflowStep2" data-step="edit">
+                        <div class="workflow-step" id="workflowStep2" data-step="kvimagery">
                             <div class="step-indicator">
                                 <span class="step-number">2</span>
+                            </div>
+                            <div class="step-info">
+                                <span class="step-title">View KV Imagery</span>
+                                <span class="step-desc">Grab Maps satellite</span>
+                            </div>
+                            <div class="step-status"></div>
+                            <button type="button" class="step-action-btn" onclick="taskManager.startWorkflowStep('kvimagery')">Open KV</button>
+                        </div>
+                        <div class="step-connector"></div>
+                        <div class="workflow-step" id="workflowStep3" data-step="edit">
+                            <div class="step-indicator">
+                                <span class="step-number">3</span>
                             </div>
                             <div class="step-info">
                                 <span class="step-title">Edit</span>
                                 <span class="step-desc">Simplify geometry</span>
                             </div>
                             <div class="step-status"></div>
-                            <button class="step-action-btn" onclick="taskManager.startWorkflowStep('edit')">Start</button>
+                            <button type="button" class="step-action-btn" onclick="taskManager.startWorkflowStep('edit')">Start</button>
                         </div>
                         <div class="step-connector"></div>
-                        <div class="workflow-step" id="workflowStep3" data-step="split">
+                        <div class="workflow-step" id="workflowStep4" data-step="split">
                             <div class="step-indicator">
-                                <span class="step-number">3</span>
+                                <span class="step-number">4</span>
                             </div>
                             <div class="step-info">
                                 <span class="step-title">Split</span>
                                 <span class="step-desc">Divide ways</span>
                             </div>
                             <div class="step-status"></div>
-                            <button class="step-action-btn" onclick="taskManager.startWorkflowStep('split')" disabled>Start</button>
+                            <button type="button" class="step-action-btn" onclick="taskManager.startWorkflowStep('split')" disabled>Start</button>
                         </div>
                         <div class="step-connector"></div>
-                        <div class="workflow-step" id="workflowStep4" data-step="tag">
+                        <div class="workflow-step" id="workflowStep5" data-step="tag">
                             <div class="step-indicator">
-                                <span class="step-number">4</span>
+                                <span class="step-number">5</span>
                             </div>
                             <div class="step-info">
                                 <span class="step-title">Tag</span>
                                 <span class="step-desc">Set properties</span>
                             </div>
                             <div class="step-status"></div>
-                            <button class="step-action-btn" onclick="taskManager.startWorkflowStep('tag')" disabled>Start</button>
+                            <button type="button" class="step-action-btn" onclick="taskManager.startWorkflowStep('tag')" disabled>Start</button>
                         </div>
                     </div>
                 </div>
@@ -315,7 +313,6 @@
                             </svg>
                             Export to JOSM
                         </button>
-                        <button class="control-btn btn-secondary" onclick="taskManager.closePreview()">Close</button>
                     </div>
                 </div>
 
@@ -366,8 +363,10 @@
                         </button>
                     </div>
                 </div>
+                    </div>
+                </div>
             </div>
-        </div>
+        </main>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

@@ -41,9 +41,10 @@ class TaskManager {
         this.splitSegments = []; // Store both segments after splitting for easy selection
         
         // Workflow state
-        this.workflowStep = 'preview'; // 'preview', 'edit', 'split', 'tag'
+        this.workflowStep = 'preview'; // 'preview', 'kvimagery', 'edit', 'split', 'tag'
         this.workflowCompleted = {
             preview: false,
+            kvimagery: false,
             edit: false,
             split: false,
             tag: false
@@ -1451,6 +1452,35 @@ class TaskManager {
         }
     }
 
+    getTaskDisplayMain() {
+        return document.getElementById('taskDisplayMain') || document.getElementById('taskDisplay');
+    }
+
+    setTaskDisplayContent(html) {
+        const main = this.getTaskDisplayMain();
+        if (main) main.innerHTML = html;
+    }
+
+    showSequenceEditorPanel() {
+        const panel = document.getElementById('sequenceEditorPanel');
+        const taskDisplay = document.getElementById('taskDisplay');
+        if (panel) {
+            panel.style.display = 'flex';
+            panel.classList.add('is-visible');
+        }
+        if (taskDisplay) taskDisplay.classList.add('task-display--with-editor');
+    }
+
+    hideSequenceEditorPanel() {
+        const panel = document.getElementById('sequenceEditorPanel');
+        const taskDisplay = document.getElementById('taskDisplay');
+        if (panel) {
+            panel.style.display = 'none';
+            panel.classList.remove('is-visible');
+        }
+        if (taskDisplay) taskDisplay.classList.remove('task-display--with-editor');
+    }
+
     switchView(view, targetSequenceId = null) {
         this.currentView = view;
         this.syncViewChrome(view);
@@ -1568,6 +1598,10 @@ class TaskManager {
     }
 
     renderCurrentTask() {
+        if (this.currentView !== 'active') {
+            this.closePreview();
+        }
+
         // Route to appropriate render method based on view
         switch(this.currentView) {
             case 'all':
@@ -1585,7 +1619,6 @@ class TaskManager {
     }
 
     renderAllTasksView() {
-        const taskDisplay = document.getElementById('taskDisplay');
         const prevBtn = document.getElementById('prevBtn');
         const nextBtn = document.getElementById('nextBtn');
         const taskCounter = document.getElementById('taskCounter');
@@ -1593,11 +1626,11 @@ class TaskManager {
         const allSequences = this.getAllSequences();
         
         if (allSequences.length === 0) {
-            taskDisplay.innerHTML = `
+            this.setTaskDisplayContent(`
                 <div class="empty-state">
                     <p>No tasks found. Upload a file to begin.</p>
                 </div>
-            `;
+            `);
             if (prevBtn) prevBtn.style.display = 'none';
             if (nextBtn) nextBtn.style.display = 'none';
             if (taskCounter) taskCounter.textContent = '';
@@ -1649,7 +1682,7 @@ class TaskManager {
                 ? `<div class="sequences-table-wrap">${this.buildAllSequencesTable(filteredSequences)}</div>`
                 : `<div class="sequence-list">${sequenceList}</div>`;
 
-        taskDisplay.innerHTML = `
+        this.setTaskDisplayContent(`
             <div class="all-tasks-list">
                 <div class="all-tasks-toolbar">
                     <h4 class="all-tasks-heading">All sequences (${allSequences.length} total)</h4>
@@ -1676,7 +1709,7 @@ class TaskManager {
                 </div>
                 ${mainContent}
             </div>
-        `;
+        `);
     }
 
     handleAllTasksSearch(searchTerm) {
@@ -1708,7 +1741,6 @@ class TaskManager {
     }
 
     renderSimpleListView() {
-        const taskDisplay = document.getElementById('taskDisplay');
         const prevBtn = document.getElementById('prevBtn');
         const nextBtn = document.getElementById('nextBtn');
         const taskCounter = document.getElementById('taskCounter');
@@ -1717,11 +1749,11 @@ class TaskManager {
         
         if (viewSequences.length === 0) {
             const viewName = this.currentView === 'done' ? 'done' : 'skipped';
-            taskDisplay.innerHTML = `
+            this.setTaskDisplayContent(`
                 <div class="empty-state">
                     <p>No ${viewName} tasks found.</p>
                 </div>
-            `;
+            `);
             if (prevBtn) prevBtn.style.display = 'none';
             if (nextBtn) nextBtn.style.display = 'none';
             if (taskCounter) taskCounter.textContent = '';
@@ -1756,14 +1788,14 @@ class TaskManager {
             `;
         }).join('');
 
-        taskDisplay.innerHTML = `
+        this.setTaskDisplayContent(`
             <div class="simple-list-view">
                 <h4 class="list-page-title">${viewName} (${viewSequences.length})</h4>
                 <div class="sequence-list-with-status">
                     ${sequenceList}
                 </div>
             </div>
-        `;
+        `);
 
         // If we navigated here via navigateToSequence, scroll to and highlight the target
         if (this.navigatingToSequenceId) {
@@ -1785,7 +1817,6 @@ class TaskManager {
     }
 
     renderDetailedView() {
-        const taskDisplay = document.getElementById('taskDisplay');
         const prevBtn = document.getElementById('prevBtn');
         const nextBtn = document.getElementById('nextBtn');
         const taskCounter = document.getElementById('taskCounter');
@@ -1793,11 +1824,12 @@ class TaskManager {
         const viewSequences = this.getActiveSequences();
         
         if (viewSequences.length === 0) {
-            taskDisplay.innerHTML = `
+            this.setTaskDisplayContent(`
                 <div class="empty-state">
                     <p>No active tasks found.</p>
                 </div>
-            `;
+            `);
+            this.closePreview();
             if (prevBtn) prevBtn.disabled = true;
             if (nextBtn) nextBtn.disabled = true;
             if (taskCounter) taskCounter.textContent = '';
@@ -1845,7 +1877,8 @@ class TaskManager {
         const ll = this.formatSequenceLatLon(displaySequence);
         const gh = this.formatSequenceGeohash(displaySequence);
         const seqIdAttr = this.escapeHtmlAttr(String(displaySequence.id));
-        taskDisplay.innerHTML = `
+        this.setTaskDisplayContent(`
+            <div class="active-sequence-page">
             <div class="task-card">
                 <div class="task-id">
                     <span class="task-id-label">Sequence ID</span>
@@ -1893,12 +1926,20 @@ class TaskManager {
                     <button class="action-btn btn-export" onclick="taskManager.exportToJOSM('${displaySequence.id}')">
                         📥 Export to JOSM
                     </button>
-                    <button class="action-btn btn-preview" onclick="taskManager.previewSequence('${displaySequence.id}')">
-                        👁️ Preview GeoJSON
-                    </button>
                 </div>
             </div>
-        `;
+            </div>
+        `);
+
+        const seqIdStr = String(displaySequence.id);
+        this.showSequenceEditorPanel();
+        if (String(this.currentPreviewSequence?.id) !== seqIdStr) {
+            this.previewSequence(displaySequence.id);
+        } else {
+            requestAnimationFrame(() => {
+                if (this.map) this.map.invalidateSize();
+            });
+        }
 
         // Add event listener for status dropdown
         const statusDropdown = document.getElementById('statusDropdown');
@@ -2135,6 +2176,28 @@ class TaskManager {
     formatSequenceGeohash(sequence) {
         const geohash = this.getSequenceGeohash(sequence);
         return geohash || '—';
+    }
+
+    /**
+     * Grab Maps KV imagery URL for a sequence center (place=lon,lat · hash zoom/lat/lon).
+     * @returns {string | null}
+     */
+    getGrabKvImageryUrl(sequence) {
+        const center = this.getSequenceCenterLatLon(sequence);
+        if (!center) return null;
+        const { lat, lon } = center;
+        const zoom = 16.64;
+        return `https://maps.grab.com/?place=${encodeURIComponent(`${lon},${lat}`)}#${zoom}/${lat}/${lon}`;
+    }
+
+    openKvImagery(sequence = this.currentPreviewSequence) {
+        const url = this.getGrabKvImageryUrl(sequence);
+        if (!url) {
+            alert('No coordinates available for this sequence.');
+            return false;
+        }
+        window.open(url, '_blank', 'noopener,noreferrer');
+        return true;
     }
 
     geohashDisplayHtml(sequence, extraClass = '') {
@@ -3015,6 +3078,7 @@ class TaskManager {
         this.workflowStep = 'preview';
         this.workflowCompleted = {
             preview: true,
+            kvimagery: false,
             edit: false,
             split: false,
             tag: false
@@ -3055,11 +3119,9 @@ class TaskManager {
         // Save/Revert buttons removed - edits autosave on export
         
         
-        // Show modal
-        const modal = document.getElementById('previewModal');
-        modal.style.display = 'block';
+        this.showSequenceEditorPanel();
 
-        // Initialize map - need to wait a bit for modal to be visible
+        // Initialize map once the inline editor panel is visible
         setTimeout(() => {
             if (!this.map) {
                 // Default to Singapore coordinates (as per user preference)
@@ -5082,8 +5144,7 @@ class TaskManager {
         this.editHistory = [];
         this.currentHistoryIndex = -1;
         
-        const modal = document.getElementById('previewModal');
-        modal.style.display = 'none';
+        this.hideSequenceEditorPanel();
         this.currentPreviewSequence = null;
         this.previewEditMode = false;
         this.originalPreviewFeatures = null;
@@ -7820,8 +7881,16 @@ class TaskManager {
     }
 
     // Workflow Management Functions
+    static WORKFLOW_STEPS = Object.freeze(['preview', 'kvimagery', 'edit', 'split', 'tag']);
+
+    isWorkflowStepEnabled(step, index) {
+        const steps = TaskManager.WORKFLOW_STEPS;
+        if (index === 0 || step === 'edit') return true;
+        return this.workflowCompleted[steps[index - 1]];
+    }
+
     updateWorkflowUI() {
-        const steps = ['preview', 'edit', 'split', 'tag'];
+        const steps = TaskManager.WORKFLOW_STEPS;
         
         steps.forEach((step, index) => {
             const stepEl = document.getElementById(`workflowStep${index + 1}`);
@@ -7829,7 +7898,7 @@ class TaskManager {
             
             const isCompleted = this.workflowCompleted[step];
             const isCurrent = this.workflowStep === step;
-            const isEnabled = index === 0 || this.workflowCompleted[steps[index - 1]];
+            const isEnabled = this.isWorkflowStepEnabled(step, index);
             
             // Update step appearance
             stepEl.classList.remove('active', 'completed', 'disabled');
@@ -7846,6 +7915,9 @@ class TaskManager {
             const actionBtn = stepEl.querySelector('.step-action-btn');
             
             if (isCompleted) {
+                const completeKvBtnDone = stepEl.querySelector('.step-complete-kv-btn');
+                if (completeKvBtnDone) completeKvBtnDone.style.display = 'none';
+
                 // Show tick for completed steps (consistent with step 1)
                 if (statusEl) {
                     statusEl.textContent = '✓';
@@ -7854,7 +7926,7 @@ class TaskManager {
                 // Show "Revisit" button for completed steps to allow going back
                 if (actionBtn) {
                     actionBtn.style.display = 'inline-block';
-                    actionBtn.textContent = 'Revisit';
+                    actionBtn.textContent = step === 'kvimagery' ? 'Open KV' : 'Revisit';
                     actionBtn.disabled = false;
                     actionBtn.onclick = () => {
                         this.startWorkflowStep(step);
@@ -7867,20 +7939,47 @@ class TaskManager {
                     statusEl.style.display = 'none';
                 }
                 if (actionBtn) {
-                    // Show "Complete" button for active steps
                     actionBtn.style.display = 'inline-block';
-                    actionBtn.textContent = 'Complete';
-                    actionBtn.disabled = false;
-                    actionBtn.onclick = () => {
-                        this.completeWorkflowStep(step);
-                        if (step === 'edit' && this.previewEditMode) {
-                            this.toggleEditMode();
-                        } else if (step === 'split' && this.splitMode) {
-                            this.toggleSplitMode();
-                        }
-                    };
+                    if (step === 'kvimagery') {
+                        actionBtn.textContent = 'Open KV';
+                        actionBtn.disabled = false;
+                        actionBtn.onclick = () => {
+                            this.openKvImagery(this.currentPreviewSequence);
+                        };
+                    } else {
+                        actionBtn.textContent = 'Complete';
+                        actionBtn.disabled = false;
+                        actionBtn.onclick = () => {
+                            this.completeWorkflowStep(step);
+                            if (step === 'edit' && this.previewEditMode) {
+                                this.toggleEditMode();
+                            } else if (step === 'split' && this.splitMode) {
+                                this.toggleSplitMode();
+                            }
+                        };
+                    }
+                }
+
+                if (step === 'kvimagery') {
+                    let completeKvBtn = stepEl.querySelector('.step-complete-kv-btn');
+                    if (!completeKvBtn) {
+                        completeKvBtn = document.createElement('button');
+                        completeKvBtn.type = 'button';
+                        completeKvBtn.className = 'step-action-btn step-complete-kv-btn';
+                        completeKvBtn.textContent = 'Complete';
+                        stepEl.appendChild(completeKvBtn);
+                    }
+                    completeKvBtn.style.display = 'inline-block';
+                    completeKvBtn.disabled = false;
+                    completeKvBtn.onclick = () => this.completeWorkflowStep('kvimagery');
+                } else {
+                    const completeKvBtn = stepEl.querySelector('.step-complete-kv-btn');
+                    if (completeKvBtn) completeKvBtn.style.display = 'none';
                 }
             } else {
+                const completeKvBtnPending = stepEl.querySelector('.step-complete-kv-btn');
+                if (completeKvBtnPending) completeKvBtnPending.style.display = 'none';
+
                 // Hide status indicator for pending steps
                 if (statusEl) {
                     statusEl.textContent = '';
@@ -7889,7 +7988,7 @@ class TaskManager {
                 if (actionBtn) {
                     // Show "Start" button for pending steps
                     actionBtn.style.display = 'inline-block';
-                    actionBtn.textContent = 'Start';
+                    actionBtn.textContent = step === 'kvimagery' ? 'Open KV' : 'Start';
                     actionBtn.disabled = !isEnabled;
                 }
             }
@@ -7903,12 +8002,12 @@ class TaskManager {
         }
         
         // Allow going back to completed steps - only check if step is not completed
-        const stepOrder = ['preview', 'edit', 'split', 'tag'];
+        const stepOrder = TaskManager.WORKFLOW_STEPS;
         const currentIndex = stepOrder.indexOf(step);
         const isStepCompleted = this.workflowCompleted[step];
         
         // Only enforce previous step completion if this step hasn't been completed yet
-        if (!isStepCompleted && currentIndex > 0 && !this.workflowCompleted[stepOrder[currentIndex - 1]]) {
+        if (!isStepCompleted && currentIndex > 0 && step !== 'edit' && !this.workflowCompleted[stepOrder[currentIndex - 1]]) {
             alert(`Please complete the ${stepOrder[currentIndex - 1]} step first.`);
             return;
         }
@@ -7916,7 +8015,26 @@ class TaskManager {
         this.workflowStep = step;
         this.updateWorkflowUI();
         
-        if (step === 'edit') {
+        if (step === 'kvimagery') {
+            this.openKvImagery(this.currentPreviewSequence);
+
+            const tagEditorPanel = document.getElementById('tagEditorPanel');
+            if (tagEditorPanel) tagEditorPanel.style.display = 'none';
+
+            const splitBtn = document.getElementById('splitWayBtn');
+            const splitBtnMain = document.getElementById('splitWayBtnMain');
+            if (splitBtn) splitBtn.style.display = 'none';
+            if (splitBtnMain) splitBtnMain.style.display = 'none';
+
+            document.getElementById('simplifyBtn').style.display = 'none';
+            document.getElementById('toleranceInput').style.display = 'none';
+            document.getElementById('undoBtn').style.display = 'none';
+            document.getElementById('redoBtn').style.display = 'none';
+            document.getElementById('toggleEditModeBtn').style.display = 'none';
+
+            if (this.splitMode) this.toggleSplitMode();
+            if (this.previewEditMode) this.toggleEditMode();
+        } else if (step === 'edit') {
             // Ensure we're in edit workflow step
             this.workflowStep = 'edit';
             this.updateWorkflowUI();
@@ -8085,7 +8203,7 @@ class TaskManager {
         this.updateWorkflowUI();
         
         // Auto-advance to next step
-        const stepOrder = ['preview', 'edit', 'split', 'tag'];
+        const stepOrder = TaskManager.WORKFLOW_STEPS;
         const currentIndex = stepOrder.indexOf(step);
         if (currentIndex < stepOrder.length - 1) {
             const nextStep = stepOrder[currentIndex + 1];
