@@ -1557,7 +1557,7 @@ class TaskManager {
                     ways: seq.wayCount || 0
                 };
             return `
-                <tr class="sequences-table-row">
+                <tr class="sequences-table-row${this.sequenceDoneClass(seq)}">
                     <td class="sequences-td-id">
                         <button type="button" class="link-seq-id" onclick="taskManager.navigateToSequence('${escapedId}')">${idText}</button>
                     </td>
@@ -1667,7 +1667,7 @@ class TaskManager {
         const sequenceList = filteredSequences.map(seq => {
             const escapedId = String(seq.id).replace(/'/g, "\\'").replace(/"/g, "&quot;");
             const ll = this.formatSequenceLatLon(seq);
-            return `<div class="sequence-id-item clickable" data-sequence-id="${escapedId}" onclick="taskManager.navigateToSequence('${escapedId}')">
+            return `<div class="sequence-id-item clickable${this.sequenceDoneClass(seq)}" data-sequence-id="${escapedId}" onclick="taskManager.navigateToSequence('${escapedId}')">
                 <div class="sequence-id-line">${seq.id}</div>
                 ${this.coordinatesCopyHtml(ll)}${this.geohashDisplayHtml(seq)}${seq.reviewedBy ? `<div class="sequence-reviewer-badge">${this.escapeHtml(String(seq.reviewedBy))}</div>` : ''}</div>`;
         }).join('');
@@ -2206,6 +2206,11 @@ class TaskManager {
             return `<span class="sequence-geohash sequence-geohash--empty ${extraClass}">—</span>`;
         }
         return `<div class="sequence-geohash-wrap ${extraClass}"><span class="sequence-geohash-label">Geohash</span> ${this.coordinatesCopyHtml(geohash, 'sequence-geohash')}</div>`;
+    }
+
+    /** CSS class suffix when sequence is marked done (All grid/table). */
+    sequenceDoneClass(seq) {
+        return seq?.status === 'done' ? ' sequence--done' : '';
     }
 
     escapeHtmlAttr(value) {

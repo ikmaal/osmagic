@@ -1198,6 +1198,58 @@ button.sequence-geohash {
     box-shadow: var(--shadow-sm);
 }
 
+.sequence-id-item.sequence--done {
+    background: rgba(5, 150, 105, 0.14);
+    border-color: var(--accent-success);
+    box-shadow: inset 0 0 0 1px rgba(5, 150, 105, 0.2);
+}
+
+.sequence-id-item.sequence--done .sequence-id-line {
+    color: var(--accent-success);
+}
+
+.sequence-id-item.sequence--done .sequence-reviewer-badge {
+    color: var(--accent-success);
+}
+
+.sequence-id-item.sequence--done.clickable:hover {
+    background: rgba(5, 150, 105, 0.22);
+    border-color: var(--accent-success);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .sequence-id-item.sequence--done {
+    background: rgba(74, 222, 128, 0.12);
+    border-color: var(--accent-success);
+    box-shadow: inset 0 0 0 1px rgba(74, 222, 128, 0.25);
+}
+
+[data-theme="dark"] .sequence-id-item.sequence--done.clickable:hover {
+    background: rgba(74, 222, 128, 0.2);
+}
+
+.sequences-table-row.sequence--done td {
+    background: rgba(5, 150, 105, 0.14);
+    border-top-color: rgba(5, 150, 105, 0.35);
+}
+
+.sequences-table-row.sequence--done .link-seq-id {
+    color: var(--accent-success);
+}
+
+.sequences-table-row.sequence--done:hover td {
+    background: rgba(5, 150, 105, 0.22);
+}
+
+[data-theme="dark"] .sequences-table-row.sequence--done td {
+    background: rgba(74, 222, 128, 0.12);
+    border-top-color: rgba(74, 222, 128, 0.3);
+}
+
+[data-theme="dark"] .sequences-table-row.sequence--done:hover td {
+    background: rgba(74, 222, 128, 0.2);
+}
+
 .sequences-view-toggle {
     display: inline-flex;
     align-items: center;
